@@ -39,16 +39,13 @@ npm install -g stacktracify
 
 ## Usage
 
-**Copy a minified stacktrace to your clipboard** - then run:
+Pass the minified stacktrace to `stacktracify` via stdin:
 
 ```
-stacktracify /path/to/js.map
+cat /tmp/crash.txt | stacktracify
 ```
 
-Can also read stacktrace from file. For more info:
-```
-stacktracify --help
-```
+`stacktracify` will automatically fetch the source maps from the URLs given in the stacktrace.
 
 ## See also
 
