@@ -3,8 +3,24 @@
 const meow = require('meow');
 const stackTraceParser = require('stacktrace-parser');
 const fs = require('fs-extra');
-const clipboardy = require('clipboardy');
 const { SourceMapConsumer } = require('source-map');
+const fetch = require('node-fetch');
+
+const sourceMapConsumers = {}
+async function getSourceMapConsumerForFile(file) {
+  let smc = sourceMapConsumers[file];
+  if (smc) {
+    return smc;
+  }
+  // FIXME: this just assumes that relative to a URL, the source map is available at URL.map. Ideally we should read this
+  // from the source js file's sourceMappingURL that's present in the last line as a comment
+  const response = await fetch(file + '.map');
+  const text = await response.text();
+  const content = JSON.parse(text)
+  smc = await new SourceMapConsumer(content);
+  sourceMapConsumers[file] = smc;
+  return smc;
+}
 
 
 const cli = meow(`
@@ -30,17 +46,11 @@ const { file } = cli.flags;
 
 (async () => {
   try {
-    const mapPath = cli.input[0];
-    if (!mapPath) cli.showHelp();
-    const mapContent = JSON.parse(await fs.readFile(mapPath, 'utf-8'));
-    // WTF? promise?
-    const smc = await new SourceMapConsumer(mapContent);
-
     let str;
     if (file !== undefined) {
-      str = await fs.readFile(file, 'utf-8');
+      str = fs.readFileSync(file, 'utf-8');
     } else {
-      str = await clipboardy.read();
+      str = fs.readFileSync(0, 'utf-8')
     }
 
     let [header, ...lines] = str.trim().split(/\r?\n/);
@@ -61,22 +71,23 @@ const { file } = cli.flags;
 
     if (header) console.log(header);
 
-    stack.forEach(({ methodName, lineNumber, column }) => {
+    for (const {file, methodName, lineNumber, column} of stack) {
       try {
         if (lineNumber == null || lineNumber < 1) {
           console.log(`    at ${methodName || '[unknown]'}`);
         } else {
+          const smc = await getSourceMapConsumerForFile(file);
           const pos = smc.originalPositionFor({ line: lineNumber, column });
           if (pos && pos.line != null) {
             console.log(`    at ${pos.name || methodName || '[unknown]'} (${pos.source}:${pos.line}:${pos.column})`);
           }
-    
+
           // console.log('src', smc.sourceContentFor(pos.source));
         }
       } catch (err) {
         console.log(`    at FAILED_TO_PARSE_LINE`);
       }
-    });
+    }
   } catch (err) {
     console.error(err);
   }
