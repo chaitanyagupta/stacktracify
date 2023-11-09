@@ -33,20 +33,13 @@ const cli = meow(`
   Examples
     $ stacktracify /path/to/js.map --file /path/to/my-stacktrace.txt
 `, {
-  flags: {
-    file: {
-      type: 'string',
-      alias: 'f',
-    },
-  },
 });
 
-
-const { file } = cli.flags;
 
 (async () => {
   try {
     let str;
+    const file = cli.input[0];
     if (file !== undefined) {
       str = fs.readFileSync(file, 'utf-8');
     } else {

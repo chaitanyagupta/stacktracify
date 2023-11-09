@@ -39,7 +39,13 @@ npm install -g stacktracify
 
 ## Usage
 
-Pass the minified stacktrace to `stacktracify` via stdin:
+Pass the minified stacktrace to `stacktracify` as an arg:
+
+```
+stacktracify /tmp/crash.txt
+```
+
+or via stdin:
 
 ```
 cat /tmp/crash.txt | stacktracify
